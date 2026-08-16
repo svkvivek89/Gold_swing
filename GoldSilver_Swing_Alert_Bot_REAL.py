@@ -54,8 +54,10 @@ def fetch_and_analyze(symbol):
         print(f"Error for {symbol}: {e}")
 
 # === Symbols to Track ===
-symbols = ['XAUUSD=X', 'XAGUSD=X']  # Yahoo Finance codes for Gold and Silver
+# 'XAUUSD=X' / 'XAGUSD=X' are not valid Yahoo Finance tickers (404 "Quote not
+# found"). Use the COMEX futures symbols instead, which Yahoo does serve.
+symbols = ['GC=F', 'SI=F']  # Gold and Silver futures
 
-# === Run the Check ===
-for symbol in symbols:
-    fetch_and_analyze(symbol)
+if __name__ == "__main__":
+    for symbol in symbols:
+        fetch_and_analyze(symbol)
