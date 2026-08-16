@@ -30,6 +30,11 @@ def fetch_and_analyze(symbol):
         if data.empty:
             return
 
+        # yfinance returns MultiIndex columns (Price, Ticker) even for a
+        # single-symbol download; flatten so data['Close'] is a plain Series.
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+
         data['EMA20'] = ta.trend.ema_indicator(data['Close'], window=20)
         data['EMA200'] = ta.trend.ema_indicator(data['Close'], window=200)
         data['RSI'] = ta.momentum.RSIIndicator(data['Close'], window=14).rsi()
