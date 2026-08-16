@@ -7,11 +7,11 @@ import requests
 from datetime import datetime
 
 # === Telegram Credentials ===
-# Prefer environment variables; fall back to the previous hardcoded values so
-# existing setups keep working. Rotate the bot token (it was committed to git
-# history) and set TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID going forward.
-telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "7939331779:AAHbQL6qOzq6u3jn7QipxBlKwqo66SWduy0")
-telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID", "6544776630")
+# Read from environment variables only. A bot token was previously hardcoded
+# here and committed to git history — rotate it via BotFather and set
+# TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID in your environment before running.
+telegram_bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
+telegram_chat_id = os.environ["TELEGRAM_CHAT_ID"]
 
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
