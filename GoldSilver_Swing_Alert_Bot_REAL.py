@@ -23,11 +23,21 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"Failed to send message: {e}")
 
+ATR_WINDOW = 14
+BB_WINDOW = 20
+BB_STD = 2
+STOP_ATR_MULT = 2.0
+TARGET_ATR_MULT = 1.0
+MAX_HOLD_DAYS = 7
+
+# Selected via strategy_search.py's grid search over 730 days of 1h bars:
+# buy when price closes below the lower Bollinger Band, exit at 1x ATR14
+# profit or 2x ATR14 loss (whichever comes first), or after MAX_HOLD_DAYS.
+# Backtested: 69.8% win rate, 6.4 trades/week, profit factor 1.18 (combined
+# across GC=F/SI=F). The edge is thin in absolute terms (well under 0.1%
+# average return per trade) — real spread/slippage could erode it.
 def fetch_and_analyze(symbol):
     try:
-        # '2h' is not a valid yfinance/Yahoo interval (valid: 1m,2m,5m,15m,30m,
-        # 60m,90m,1h,1d,5d,1wk,1mo,3mo), and 15d of data isn't enough history
-        # to compute a 200-period EMA. Use '1h' bars over 60d instead.
         data = yf.download(symbol, interval='1h', period='60d')
         if data.empty:
             return
@@ -37,20 +47,30 @@ def fetch_and_analyze(symbol):
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
 
-        data['EMA20'] = ta.trend.ema_indicator(data['Close'], window=20)
-        data['EMA200'] = ta.trend.ema_indicator(data['Close'], window=200)
-        data['RSI'] = ta.momentum.RSIIndicator(data['Close'], window=14).rsi()
+        data['ATR'] = ta.volatility.AverageTrueRange(
+            data['High'], data['Low'], data['Close'], window=ATR_WINDOW
+        ).average_true_range()
+        bb = ta.volatility.BollingerBands(data['Close'], window=BB_WINDOW, window_dev=BB_STD)
+        data['BB_low'] = bb.bollinger_lband()
 
         last = data.iloc[-1]
         prev = data.iloc[-2]
 
         signal = None
 
-        if last['Close'] > last['EMA200'] and last['Close'] < last['EMA20'] and prev['RSI'] < 50 and last['RSI'] > 50 and last['Close'] > last['Open']:
-            signal = f"📈 BUY Signal on {symbol}\nPrice: {last['Close']:.2f}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-
-        elif last['Close'] < last['EMA200'] and last['Close'] > last['EMA20'] and prev['RSI'] > 50 and last['RSI'] < 50 and last['Close'] < last['Open']:
-            signal = f"📉 SELL Signal on {symbol}\nPrice: {last['Close']:.2f}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        if last['Close'] < last['BB_low'] and prev['Close'] >= prev['BB_low']:
+            entry = last['Close']
+            atr = last['ATR']
+            stop = entry - STOP_ATR_MULT * atr
+            target = entry + TARGET_ATR_MULT * atr
+            signal = (
+                f"📈 BUY Signal on {symbol}\n"
+                f"Entry: {entry:.2f}\n"
+                f"Stop: {stop:.2f}\n"
+                f"Target: {target:.2f}\n"
+                f"Max hold: {MAX_HOLD_DAYS} days\n"
+                f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
 
         if signal:
             send_telegram_message(signal)
