@@ -6,10 +6,14 @@ on:
     - cron: '5 * * * *'
   workflow_dispatch:
     inputs:
-      send_test_message:
-        description: 'Send a test Telegram message instead of running the real analysis'
-        type: boolean
-        default: false
+      mode:
+        description: 'What to run'
+        type: choice
+        options:
+          - run
+          - test_message
+          - backtest
+        default: run
 
 jobs:
   run-bot:
@@ -24,13 +28,16 @@ jobs:
       - run: pip install -r requirements.txt
 
       - run: python test_telegram.py
-        if: ${{ inputs.send_test_message }}
+        if: ${{ inputs.mode == 'test_message' }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
+      - run: python backtest.py
+        if: ${{ inputs.mode == 'backtest' }}
+
       - run: python main.py
-        if: ${{ !inputs.send_test_message }}
+        if: ${{ inputs.mode == 'run' || inputs.mode == '' }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
