@@ -4,7 +4,12 @@ on:
   schedule:
     # 5 minutes past every hour, so a fresh 1h candle has closed before we check it.
     - cron: '5 * * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      send_test_message:
+        description: 'Send a test Telegram message instead of running the real analysis'
+        type: boolean
+        default: false
 
 jobs:
   run-bot:
@@ -18,7 +23,14 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - run: python test_telegram.py
+        if: ${{ inputs.send_test_message }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
       - run: python main.py
+        if: ${{ !inputs.send_test_message }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
