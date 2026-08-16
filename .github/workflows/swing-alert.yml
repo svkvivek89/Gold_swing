@@ -13,6 +13,7 @@ on:
           - run
           - test_message
           - backtest
+          - strategy_backtest
         default: run
 
 jobs:
@@ -35,6 +36,9 @@ jobs:
 
       - run: python backtest.py
         if: ${{ inputs.mode == 'backtest' }}
+
+      - run: python strategy_backtest.py
+        if: ${{ inputs.mode == 'strategy_backtest' }}
 
       - run: python main.py
         if: ${{ inputs.mode == 'run' || inputs.mode == '' }}
