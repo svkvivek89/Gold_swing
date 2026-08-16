@@ -14,6 +14,7 @@ on:
           - test_message
           - backtest
           - strategy_backtest
+          - strategy_search
         default: run
 
 jobs:
@@ -39,6 +40,9 @@ jobs:
 
       - run: python strategy_backtest.py
         if: ${{ inputs.mode == 'strategy_backtest' }}
+
+      - run: python strategy_search.py
+        if: ${{ inputs.mode == 'strategy_search' }}
 
       - run: python main.py
         if: ${{ inputs.mode == 'run' || inputs.mode == '' }}
