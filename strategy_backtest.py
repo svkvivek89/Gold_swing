@@ -23,10 +23,11 @@ def load(symbol):
     return data
 
 
-def simulate(data, entry_mask, direction, label):
-    """Walk each signal forward bar-by-bar with a real ATR stop/target and a
+def simulate(data, entry_mask, direction, label, stop_mult=ATR_STOP_MULT, target_mult=ATR_TARGET_MULT):
+    """Walk each signal forward bar-by-bar with a real ATR stop and a
     hard MAX_HOLD_HOURS timeout, using High/Low (not just Close) to decide
-    which was hit first."""
+    which was hit first. target_mult=None means no fixed target — ride the
+    trade to the stop or the 1-week timeout, whichever comes first."""
     trades = []
     for i in np.where(entry_mask.values)[0]:
         if i + 1 >= len(data):
@@ -36,10 +37,15 @@ def simulate(data, entry_mask, direction, label):
         if pd.isna(atr) or atr == 0:
             continue
 
+        target = None
         if direction == 1:
-            stop, target = entry - ATR_STOP_MULT * atr, entry + ATR_TARGET_MULT * atr
+            stop = entry - stop_mult * atr
+            if target_mult is not None:
+                target = entry + target_mult * atr
         else:
-            stop, target = entry + ATR_STOP_MULT * atr, entry - ATR_TARGET_MULT * atr
+            stop = entry + stop_mult * atr
+            if target_mult is not None:
+                target = entry - target_mult * atr
 
         exit_price, exit_type, hold = None, 'timeout', 0
         last_j = min(i + MAX_HOLD_HOURS, len(data) - 1)
@@ -50,14 +56,14 @@ def simulate(data, entry_mask, direction, label):
                 if lo <= stop:
                     exit_price, exit_type = stop, 'stop'
                     break
-                if hi >= target:
+                if target is not None and hi >= target:
                     exit_price, exit_type = target, 'target'
                     break
             else:
                 if hi >= stop:
                     exit_price, exit_type = stop, 'stop'
                     break
-                if lo <= target:
+                if target is not None and lo <= target:
                     exit_price, exit_type = target, 'target'
                     break
         if exit_price is None:
@@ -116,6 +122,9 @@ def run(symbol):
     print(f"  Candidate (oversold-dip + reclaim, stronger short filter), same stop/target/timeout:")
     simulate(data, cand_buy, 1, 'BUY ')
     simulate(data, cand_sell, -1, 'SELL')
+    print(f"  Candidate, wide stop (3x ATR), no fixed target — ride to stop or {MAX_HOLD_HOURS}h timeout:")
+    simulate(data, cand_buy, 1, 'BUY ', stop_mult=3.0, target_mult=None)
+    simulate(data, cand_sell, -1, 'SELL', stop_mult=3.0, target_mult=None)
 
 
 if __name__ == "__main__":
