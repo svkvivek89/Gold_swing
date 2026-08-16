@@ -17,7 +17,9 @@ def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
     payload = {"chat_id": telegram_chat_id, "text": message}
     try:
-        requests.post(url, data=payload)
+        response = requests.post(url, data=payload)
+        if not response.ok:
+            print(f"Telegram API rejected the message ({response.status_code}): {response.text}")
     except Exception as e:
         print(f"Failed to send message: {e}")
 
